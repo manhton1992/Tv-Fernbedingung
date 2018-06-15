@@ -14,13 +14,11 @@ public class Benachrichtigung extends AppCompatActivity {
 
     public void favFunction(View view) {
         Intent intent = new Intent(getApplicationContext(), Favorites.class);
-
         startActivity(intent);
     }
 
     public void toSettings(View view) {
         Intent intent = new Intent(getApplicationContext(), Einstellungen.class);
-
         startActivity(intent);
     }
 
