@@ -126,7 +126,7 @@
             android:layout_height="70dp"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:onClick="progBack"
+            android:onClick="previousProg"
             app:srcCompat="@drawable/previous2" />
 
         <ImageButton
@@ -143,7 +143,7 @@
             android:layout_height="70dp"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:onClick="progNext"
+            android:onClick="nextProg"
             app:srcCompat="@drawable/next2" />
     </LinearLayout>
 
@@ -157,7 +157,7 @@
         android:layout_marginRight="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
-        android:onClick="progScan"
+        android:onClick="showProgList"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.501"
@@ -178,6 +178,7 @@
         android:layout_marginTop="8dp"
         android:text="Sendersuchlauf"
         android:visibility="visible"
+        android:onClick="scanProgList"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
