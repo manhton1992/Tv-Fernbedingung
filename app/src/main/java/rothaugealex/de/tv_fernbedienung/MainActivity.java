@@ -1,6 +1,7 @@
 package rothaugealex.de.tv_fernbedienung;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -8,7 +9,25 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import org.json.JSONObject;
+
+import java.lang.reflect.Executable;
+
 public class MainActivity extends AppCompatActivity {
+
+    static final String TAG = "fernbedienung_MainAct";
+
+    static final String TV_IP_ADDR = "192.168.2.128";
+    static final int REQ_TIMEOUT = 10000;
+
+    static final String PARAM_DEBUG_ON = "debug=1";
+    static final String PARAM_DEBUG_OFF = "debug=0";
+    static final String PARAM_VOLUME = "volume=";
+    static final String PARAM_CHANNEL_CHANGE = "channelMain=";
+
+    static final int DEFAULT_VOLUME = 50;
+
+    private int volume = DEFAULT_VOLUME;
 
     public void toSettings(View view) {
         Intent intent = new Intent(getApplicationContext(), Einstellungen.class);
@@ -22,41 +41,60 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    public void senderFunction(View view){
+    public void progScan(View view){
         Intent intent = new Intent(getApplicationContext(), Sender.class);
 
         startActivity(intent);
     }
 
-    public void vorFunction(View view){
+    public void progNext(View view){
 
 
         Toast.makeText(this, "Nächster Sender", Toast.LENGTH_SHORT).show();
     }
 
-    public void zurückFunction(View view){
+    public void progBack(View view){
 
         Toast.makeText(this, "Vorheriger Sender", Toast.LENGTH_SHORT).show();
     }
 
-    public void leiserFunction(View view)
+    public void volumeUp(View view)
     {
-        Toast.makeText(this, "Fernseher wurde leiser gestellt", Toast.LENGTH_SHORT).show();
+        /*
+        TODO: Store current volume in Shared Preference instead of using default value
+         */
+        new SendHttpReq(PARAM_VOLUME + ++volume, new RespHandler() {
+            @Override
+            public void run() {
+                // TODO: move all strings to values/strings.xml and just use reference here
+                Toast.makeText(getBaseContext(),
+                        "Fernseher wurde lauter gestellt", Toast.LENGTH_SHORT).show();
+            }
+        }).execute();
     }
 
-    public void lauterFunction(View view)
+    public void volumeDown(View view)
     {
-        Toast.makeText(this, "Fernseher wurde lauter gestellt", Toast.LENGTH_SHORT).show();
+        new SendHttpReq(PARAM_VOLUME + --volume, new RespHandler() {
+            @Override
+            public void run() {
+                // TODO: Check status before notify the user that the action is successful
+                Toast.makeText(getBaseContext(),
+                        "Fernseher wurde leiser gestellt", Toast.LENGTH_SHORT).show();
+            }
+        }).execute();
     }
 
-    public void stummFunction(View view)
+    public void mute(View view)
     {
+
         Toast.makeText(this, "Fernseher wurde stumm geschaltet", Toast.LENGTH_SHORT).show();
+
     }
 
-    public void pauseFunction(View view)
+    public void pause(View view)
     {
-        ImageButton imagebutton = (ImageButton) findViewById(R.id.pause);
+        ImageButton imagebutton = findViewById(R.id.pause);
         imagebutton.setImageResource(R.drawable.play2);
     }
 
@@ -66,9 +104,51 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-            View view = this.getWindow().getDecorView();
+        View view = this.getWindow().getDecorView();
 
 
     }
+
+
+    private class SendHttpReq extends AsyncTask<Void, Void, Boolean> {
+
+        String param;
+        JSONObject jsonOut;
+        RespHandler respHandler;
+
+        public SendHttpReq(String param, RespHandler respHandler) {
+            this.param = param;
+            this.respHandler = respHandler;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+
+            Log.d(TAG, "doInBackground: Going to send Request. PARAMS: " + this.param);
+            HttpRequest httpReq = new HttpRequest(TV_IP_ADDR, REQ_TIMEOUT);
+
+            JSONObject out = null;
+            try {
+                out = httpReq.sendHttp(this.param);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+            this.jsonOut = out;
+            return true;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean b) {
+            super.onPostExecute(b);
+            Log.d(TAG, "onPostExecute: Going to run Response Handler!");
+            this.respHandler.run();
+        }
+
+    }
+
+    /**
+     *
+     */
+    interface RespHandler extends Runnable {}
 }
