@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
             currentProgId = (currentProgId + 1) % programs.size();
             String nextProg = programs.get(currentProgId);
 
-            new SendHttpReqTask(PARAM_CHANNEL_CHANGE + nextProg, new RespHandler() {
+            executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE + nextProg, new RespHandler() {
                 @Override
                 public void run() {
                     try {
@@ -130,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
-            }).execute();
+            }));
         }
     }
 
@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
             currentProgId = ((currentProgId - 1) < 0) ? programs.size() - 1 : currentProgId - 1;
             String previousProg = programs.get(currentProgId);
 
-            new SendHttpReqTask(PARAM_CHANNEL_CHANGE + previousProg, new RespHandler() {
+            executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE + previousProg, new RespHandler() {
                 @Override
                 public void run() {
                     try {
@@ -160,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
-            }).execute();
+            }));
         }
     }
 
@@ -174,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
         /*
         TODO: Store current volume in Shared Preference instead of using default value
          */
-        new SendHttpReqTask(PARAM_VOLUME + ++volume, new RespHandler() {
+        executeTask(new SendHttpReqTask(PARAM_VOLUME + ++volume, new RespHandler() {
             @Override
             public void run() {
                 try {
@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-        }).execute();
+        }));
     }
 
     /**
@@ -197,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
     public void volumeDown(View view)
     {
         // TODO: Check for valid volume value before sinding HTTP request ;)
-        new SendHttpReqTask(PARAM_VOLUME + --volume, new RespHandler() {
+        executeTask(new SendHttpReqTask(PARAM_VOLUME + --volume, new RespHandler() {
             @Override
             public void run() {
                 try {
@@ -210,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-        }).execute();
+        }));
     }
 
     /**
