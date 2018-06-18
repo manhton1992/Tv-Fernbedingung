@@ -2,6 +2,7 @@ package rothaugealex.de.tv_fernbedienung;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -14,6 +15,7 @@ import java.util.List;
 
 public class Einstellungen extends AppCompatActivity {
 
+    public static final String TAG = "TVApp-SettingsAct";
 
     public void toHome(View view){
 
@@ -36,7 +38,7 @@ public class Einstellungen extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_einstellungen);
 
-
+        Log.d(TAG, "Settings Activity created!");
 
         ListView mylist = (ListView) findViewById(R.id.listSettings);
 
@@ -94,4 +96,18 @@ public class Einstellungen extends AppCompatActivity {
 
 
     }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "SettingsActivity paused!!!");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "SettingsActivity resumed!!!");
+    }
+
 }

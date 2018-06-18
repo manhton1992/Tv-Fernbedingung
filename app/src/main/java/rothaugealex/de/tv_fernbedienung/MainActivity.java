@@ -21,10 +21,10 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
-    static final String TAG = "fernbedienung_MainAct";
+    static final String TAG = "TVApp-MainAct";
 
     // Connection Parameters
-    static final String TV_IP_ADDR = "192.168.2.128";
+    static final String TV_IP_ADDR = "172.16.203.237";
     static final int REQ_TIMEOUT = 10000;
 
     // GET Parameters
@@ -170,6 +170,7 @@ public class MainActivity extends AppCompatActivity {
      */
     public void volumeUp(View view)
     {
+
         // TODO: Check for valid volume value before sinding HTTP request;)
         /*
         TODO: Store current volume in Shared Preference instead of using default value
@@ -219,6 +220,34 @@ public class MainActivity extends AppCompatActivity {
      */
     public void mute(View view)
     {
+
+        // Not good: (Running on main thread - GUIThread)
+
+        /*HttpRequest httpReq = new HttpRequest(TV_IP_ADDR, REQ_TIMEOUT);
+        JSONObject jsonOut = null;
+        try {
+            jsonOut = httpReq.sendHttp(PARAM_VOLUME + "0");
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }*/
+
+        // TODO: Check for valid volume value before sinding HTTP request ;)
+        executeTask(new SendHttpReqTask(PARAM_VOLUME + "0", new RespHandler() {
+            @Override
+            public void run() {
+                try {
+                    // Check status before notify the user that the action is successful
+                    if (this.getContent().get(RESP_STATUS).equals("ok"))
+                        Log.d(TAG, "mute: ok");
+                    // TODO: Do something further?
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }));
+
         // TODO
         //Toast.makeText(this, "Fernseher wurde stumm geschaltet", Toast.LENGTH_SHORT).show();
 
@@ -237,9 +266,26 @@ public class MainActivity extends AppCompatActivity {
 
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "MainActivity paused!!!");
+
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "MainActivity resumed!!!");
+
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Log.d(TAG, "Main Activity created!");
 
         View view = this.getWindow().getDecorView();
 
