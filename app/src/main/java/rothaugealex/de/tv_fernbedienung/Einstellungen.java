@@ -41,10 +41,9 @@ public class Einstellungen extends AppCompatActivity {
         ListView mylist = (ListView) findViewById(R.id.listSettings);
 
         final ArrayList<String> myarraylist = new ArrayList<String>();
-        myarraylist.add("Benachrichtigung");
+
         myarraylist.add("Informationen");
         myarraylist.add("Reset");
-        myarraylist.add("Sprache");
         myarraylist.add("Automatisches Ausschlaten");
 
         ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(Einstellungen.this, android.R.layout.simple_list_item_1, myarraylist);
@@ -55,19 +54,15 @@ public class Einstellungen extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                    switch (position) {
-                       case 0: {
-                           Intent intent = new Intent(getApplicationContext(), Benachrichtigung.class);
-                           startActivity(intent);
-                       }
-                       break;
 
-                       case 1: {
+
+                       case 0: {
                            Intent intent = new Intent(getApplicationContext(), Informationen.class);
                            startActivity(intent);
                            }
                            break;
 
-                       case 2:{
+                       case 1:{
 
                            Intent intent = new Intent(getApplicationContext(), Reset.class);
                            startActivity(intent);
@@ -75,13 +70,7 @@ public class Einstellungen extends AppCompatActivity {
                        }
                            break;
 
-                       case 3:{
-                           Intent intent = new Intent(getApplicationContext(), Sprache.class);
-                           startActivity(intent);
-                       }
-                           break;
-
-                       case 4:{
+                       case 2:{
                            Intent intent = new Intent(getApplicationContext(), AutomatischesAbschalten.class);
                            startActivity(intent);
                        }

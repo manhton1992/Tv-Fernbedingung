@@ -1,15 +1,23 @@
 package rothaugealex.de.tv_fernbedienung;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.List;
 
-public class Favorites extends AppCompatActivity {
+import static rothaugealex.de.tv_fernbedienung.MainActivity.PARAM_CHANNEL_CHANGE;
+import static rothaugealex.de.tv_fernbedienung.MainActivity.executeTask;
+
+public class Favorites extends MainActivity {
 
     public void toHome(View view){
 
@@ -29,14 +37,53 @@ public class Favorites extends AppCompatActivity {
         setContentView(R.layout.activity_favorites);
 
 
-        ListView mylist = (ListView) findViewById(R.id.listFavorites);
+        ListView mylistFavorites = (ListView) findViewById(R.id.listFavorites);
 
-        ArrayList<String> myarraylist = new ArrayList<String>();
+        SharedPreferences senderliste = getSharedPreferences("PREFS", 0);
+        String senderString = senderliste.getString("Favoriten", "");
+        String[] senderWords = senderString.split(",");
+        final List<String> favList = new ArrayList<String>();
+
+        for (int i = 0; i <senderWords.length; i++){
+            favList.add(senderWords[i]);
+
+        }
+
+        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_checked, favList);
+        mylistFavorites.setAdapter(arrayAdapter);
 
 
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_checked, myarraylist);
+        mylistFavorites.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String item = ((TextView)view).getText().toString();
 
-        mylist.setAdapter(arrayAdapter);
+                Toast.makeText(getBaseContext(), item, Toast.LENGTH_SHORT).show();
+                //-----------------------------------------------------------------------
+                executeTask(new Favorites.SendHttpReqTask(PARAM_CHANNEL_CHANGE + item, new Favorites.RespHandler() {
+                    @Override
+                    public void run() {
+                        try {
+                            // Check status before notify the user that the action is successful
+
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                }));
+                //-----------------------------------------------------------------------
+
+            }
+        });
+
+
+
+
+
+        //---------------------------------------------------------------------------------------------------------------------------------
+
 
 
 

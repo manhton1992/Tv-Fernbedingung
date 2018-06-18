@@ -1,7 +1,10 @@
 package rothaugealex.de.tv_fernbedienung;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.media.tv.TvContract;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,6 +18,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 // TODO: move all strings to values/strings.xml and just use references in java & xml code :)
 // TODO: Insert Stand-By function ;)
@@ -24,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
     static final String TAG = "fernbedienung_MainAct";
 
     // Connection Parameters
-    static final String TV_IP_ADDR = "192.168.2.128";
+    static final String TV_IP_ADDR = "172.16.200.38";
     static final int REQ_TIMEOUT = 10000;
 
     // GET Parameters
@@ -33,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     static final String PARAM_VOLUME = "volume=";
     static final String PARAM_CHANNEL_CHANGE = "channelMain=";
     static final String PARAM_CHANNEL_SCAN = "scanChannels=";
+    static final String PARAM_POWER_OFF = "powerOff=";
 
 
     // HTTP Response Parameters
@@ -99,9 +105,25 @@ public class MainActivity extends AppCompatActivity {
      */
     public void showProgList(View view){
         Intent intent = new Intent(getApplicationContext(), Sender.class);
-        // TODO: Different Activities must use Share Preference in order to access (shared) data such as program list
+
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (String s : programs) {
+            stringBuilder.append(s);
+            stringBuilder.append(",");
+        }
+
+        SharedPreferences senderliste = getSharedPreferences("PREFS", 0);
+        SharedPreferences.Editor editor = senderliste.edit();
+        editor.putString("Sender", stringBuilder.toString());
+        editor.commit();
+
 
         startActivity(intent);
+
+
+
     }
 
     /**
@@ -170,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
      */
     public void volumeUp(View view)
     {
-        // TODO: Check for valid volume value before sinding HTTP request;)
+        // TODO: Check for valid volume value before sending HTTP request;)
         /*
         TODO: Store current volume in Shared Preference instead of using default value
          */
@@ -221,6 +243,20 @@ public class MainActivity extends AppCompatActivity {
     {
         // TODO
         //Toast.makeText(this, "Fernseher wurde stumm geschaltet", Toast.LENGTH_SHORT).show();
+        executeTask(new SendHttpReqTask(PARAM_VOLUME + 0, new RespHandler() {
+            @Override
+            public void run() {
+                try {
+                    // Check status before notify the user that the action is successful
+                    if (this.getContent().get(RESP_STATUS).equals("ok"))
+                        Log.d(TAG, "volumeMute: ok");
+                    // TODO: Do something further?
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }));
 
     }
 
@@ -275,7 +311,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Async task for sending HTTP request to the TV and handling the response
      */
-    private class SendHttpReqTask extends AsyncTask<Void, Void, JSONObject> {
+    public class SendHttpReqTask extends AsyncTask<Void, Void, JSONObject> {
 
         String param;
         RespHandler respHandler;
@@ -314,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
      *  Every function should implement this handler and pass to the async task as argument.
      *  This handler do the tasks upon receiving the HTTP response.
      */
-    private abstract class RespHandler implements Runnable {
+    public abstract class RespHandler implements Runnable {
         private JSONObject content = null;
 
         public void setContent(JSONObject content) {

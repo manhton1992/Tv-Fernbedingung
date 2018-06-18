@@ -58,7 +58,7 @@
         android:orientation="horizontal"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.333"
+        app:layout_constraintHorizontal_bias="0.502"
         app:layout_constraintStart_toStartOf="parent">
 
         <Button
@@ -86,7 +86,7 @@
             android:text="Lauter" />
     </LinearLayout>
 
-    <EditText
+    <TextView
         android:id="@+id/aktuellersender"
         android:layout_width="0dp"
         android:layout_height="42dp"
@@ -96,8 +96,6 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:ems="10"
-        android:hint="zeigt Aktuellen Sender"
-        android:inputType="textPersonName"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -115,10 +113,9 @@
         android:orientation="horizontal"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout2"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/aktuellersender"
-        app:layout_constraintVertical_bias="0.457">
+        app:layout_constraintVertical_bias="0.622">
 
         <ImageButton
             android:id="@+id/zurück"
@@ -160,10 +157,10 @@
         android:onClick="showProgList"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout2"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout3"
-        app:layout_constraintVertical_bias="0.317"
+        app:layout_constraintVertical_bias="1.0"
         app:srcCompat="@drawable/television" />
 
     <Button
@@ -176,12 +173,14 @@
         android:layout_marginRight="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
+        android:onClick="scanProgList"
         android:text="Sendersuchlauf"
         android:visibility="visible"
-        android:onClick="scanProgList"
         app:layout_constraintBottom_toTopOf="@+id/linearLayout3"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/aktuellersender" />
+        app:layout_constraintTop_toBottomOf="@+id/aktuellersender"
+        app:layout_constraintVertical_bias="1.0" />
 
 </android.support.constraint.ConstraintLayout>
