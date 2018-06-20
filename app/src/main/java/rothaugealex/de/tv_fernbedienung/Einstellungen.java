@@ -18,9 +18,7 @@ public class Einstellungen extends AppCompatActivity {
     public static final String TAG = "TVApp-SettingsAct";
 
     public void toHome(View view){
-
-        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-        startActivity(intent);
+        onBackPressed();
     }
 
 

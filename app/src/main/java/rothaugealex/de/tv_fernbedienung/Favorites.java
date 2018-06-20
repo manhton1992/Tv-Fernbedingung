@@ -4,17 +4,20 @@ import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
 public class Favorites extends AppCompatActivity {
 
-    public void toHome(View view){
+    private ArrayList<String> favList;
 
-        Intent intent = new Intent(getApplicationContext(), MainActivity.class);
-        startActivity(intent);
+    public void toHome(View view){
+        onBackPressed();
     }
 
     public void toSettings(View view) {
@@ -28,17 +31,26 @@ public class Favorites extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_favorites);
 
+        ListView mylist = findViewById(R.id.listFavorites);
 
-        ListView mylist = (ListView) findViewById(R.id.listFavorites);
+        favList = new ArrayList<>();
 
-        ArrayList<String> myarraylist = new ArrayList<String>();
+        for (String fav: MainActivity.favorites)
+            favList.add(MainActivity.programNames.get(MainActivity.programs.indexOf(fav)));
 
-
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_checked, myarraylist);
-
+        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(
+                this, android.R.layout.select_dialog_item, favList);
         mylist.setAdapter(arrayAdapter);
 
 
+        //TODO: on lick listener change Channel
+        mylist.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String item = ((TextView)view).getText().toString();
 
+                MainActivity.changeProg(MainActivity.programNames.indexOf(item));
+            }
+        });
     }
 }

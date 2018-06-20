@@ -1,14 +1,14 @@
 package rothaugealex.de.tv_fernbedienung;
 
-import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.os.AsyncTask;
-import android.os.Build;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -16,6 +16,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
+import rothaugealex.de.tv_fernbedienung.SendHttpReqTask.*;
 // TODO: move all strings to values/strings.xml and just use references in java & xml code :)
 // TODO: Insert Stand-By function ;)
 
@@ -23,31 +24,58 @@ public class MainActivity extends AppCompatActivity {
 
     static final String TAG = "TVApp-MainAct";
 
-    // Connection Parameters
-    static final String TV_IP_ADDR = "172.16.203.237";
-    static final int REQ_TIMEOUT = 10000;
+    // GUI components
+    private static TextView displayTextView;
+    private static ImageButton imageButtonStandby;
+    private static Button buttonChannel;
 
     // GET Parameters
-    static final String PARAM_DEBUG_ON = "debug=1";
-    static final String PARAM_DEBUG_OFF = "debug=0";
-    static final String PARAM_VOLUME = "volume=";
-    static final String PARAM_CHANNEL_CHANGE = "channelMain=";
-    static final String PARAM_CHANNEL_SCAN = "scanChannels=";
+    public static final String PARAM_DEBUG_ON = "debug=1";
+    public static final String PARAM_DEBUG_OFF = "debug=0";
+    public static final String PARAM_VOLUME = "volume=";
+    public static final String PARAM_CHANNEL_CHANGE = "channelMain=";
+    public static final String PARAM_CHANNEL_SCAN = "scanChannels=";
+    public static final String PARAM_STANDBY = "standby=";
+    public static final String PARAM_ZOOM = "zoomMain=";
+    public static final String PARAM_PIP = "showPip=";
+    public static final String PARAM_PIP_CHANNEL = "channelPip=";
 
 
     // HTTP Response Parameters
-    static final String RESP_STATUS = "status";
-    static final String RESP_CHANNELS = "channels";
-    static final String RESP_CHANNEL = "channel";
+    public static final String RESP_STATUS = "status";
+    public static final String RESP_CHANNELS = "channels";
+    public static final String RESP_CHANNEL = "channel";
+    public static final String RESP_PROGRAM = "program";
 
     // Default values
     static final int DEFAULT_VOLUME = 50;
     static final int DEFAULT_PROG_ID = 0;
 
     // TODO: Use Share Preference to store all of this data persistently
-    private int volume = DEFAULT_VOLUME;
-    private ArrayList<String> programs = null;
-    private int currentProgId = DEFAULT_PROG_ID;
+    private static int volume = DEFAULT_VOLUME;
+    private static JSONObject programJson;
+    public static ArrayList<String> programs;
+    public static ArrayList<String> programNames;
+    public static ArrayList<String> favorites;
+    private static int currentProgId = DEFAULT_PROG_ID;
+    private static int currentPipProgId = DEFAULT_PROG_ID;
+    private static boolean standby = true;
+    private static boolean mute = false;
+    private static boolean debug = false;
+    private static boolean zoom = false;
+    private static boolean pip = false;
+    private static boolean pipFocus = false;
+    private static int pipId = 0;
+
+    // SharedPref Stuffs
+    public static final String SHARED_PREF_TAG = "TVApp-SharedPref";
+    public static final String PREF_KEY_VOLUME = "VOLUME";
+    public static final String PREF_KEY_CURRENT_PROG = "CURRENT_PROGRAM";
+    public static final String PREF_KEY_PROGRAM_JSON = "PROGRAM_JSON";
+    public static final String PREF_KEY_FAV_JSON = "FAV_JSON";
+
+    private static SharedPreferences sharedPref;
+    private static SharedPreferences.Editor prefEditor;
 
 
     public void toSettings(View view) {
@@ -67,30 +95,159 @@ public class MainActivity extends AppCompatActivity {
      * @param view
      */
     public void scanProgList(View view){
-        executeTask(new SendHttpReqTask(PARAM_CHANNEL_SCAN, new RespHandler() {
+        SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_CHANNEL_SCAN, new RespHandler() {
             @Override
             public void run() {
                 try {
                     // Check status before notify the user that the action is successful
-                    if (this.getContent().get(RESP_STATUS).equals("ok")) {
-                        programs = new ArrayList<>();
-                        JSONArray channels = this.getContent().getJSONArray(RESP_CHANNELS);
-                        // Fetch only the channel name for now
-                        // TODO: Fetch other data if needed
-                        for (int i=0; i < channels.length(); i++) {
-                            JSONObject channel = channels.getJSONObject(i);
-                            programs.add((String) channel.get(RESP_CHANNEL));
-                        }
-
-                        Toast.makeText(getBaseContext(),
-                                "Senderliste wird aktualisiert", Toast.LENGTH_SHORT).show();
-                    }
+                    if (this.getContent().get(RESP_STATUS).equals("ok"))
+                        readProgramJson(this.getContent());
                 }
                 catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         }));
+    }
+
+
+    /**
+     * TODO: comment me
+     * @param view
+     */
+    public  static void addCurrentToFav(View view){
+        if (standby) return;
+
+        if (programs == null)
+            updateDisplay();
+        else {
+            if (pip && pipFocus) {
+                favorites.add(programs.get(currentPipProgId));
+                updateDisplay();
+                Log.d(TAG, "addCurrentToFav: " + programs.get(currentProgId) + "added");
+            }
+            else if (!favorites.contains(programs.get(currentProgId))) {
+                favorites.add(programs.get(currentProgId));
+                updateDisplay();
+                Log.d(TAG, "addCurrentToFav: " + programs.get(currentProgId) + "added");
+            }
+        }
+    }
+
+
+    /**
+     * TODO: comment me
+     * @param progId
+     */
+    public static void addToFav(int progId){
+
+        if (standby) return;
+
+        if (programs == null)
+            updateDisplay();
+        else {
+            if (!favorites.contains(programs.get(progId))) {
+                favorites.add(programs.get(progId));
+                updateDisplay();
+                Log.d(TAG, "addCurrentToFav: " + programs.get(progId) + "added");
+            }
+        }
+    }
+
+
+
+    /**
+     * TODO: comment me
+     * @param view
+     */
+    public void emptyFav(View view){
+        favorites.clear();
+        updateDisplay();
+        Log.d(TAG, "emptyFav: ok");
+    }
+
+
+    /**
+     * TODO: comment me
+     * @param view
+     */
+    public void switchDebug(View view){
+       SendHttpReqTask.executeTask(new SendHttpReqTask(debug ? PARAM_DEBUG_OFF : PARAM_DEBUG_ON,
+               new RespHandler() {
+                   @Override
+                   public void run() {
+                       try {
+                           if (this.getContent().get(RESP_STATUS).equals("ok"))
+                               debug = !debug;
+                       }
+                       catch (Exception e) {
+                           e.printStackTrace();
+                       }
+                   }
+               }));
+    }
+
+
+    /**
+     * TODO: comment me
+     * @param view
+     */
+    public void zoom(View view){
+        if(standby) return;
+
+        SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_ZOOM + (zoom ? "0" : "1"),
+                new RespHandler() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (this.getContent().get(RESP_STATUS).equals("ok"))
+                                zoom = !zoom;
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }));
+    }
+
+    /**
+     * TODO: comment me
+     * @param view
+     */
+    public void pip(View view){
+        if(standby || programs.isEmpty()) return;
+
+        SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_PIP + (pip ? "0" : "1&" +
+            PARAM_PIP_CHANNEL + programs.get(currentProgId)),
+                new RespHandler() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                                pip = !pip;
+                                buttonChannel.setText("Main Channel");
+                                buttonChannel.setVisibility(pip ? View.VISIBLE : View.INVISIBLE);
+                                updateDisplay();
+                                pipFocus = true;
+                                currentPipProgId = currentProgId;
+                                buttonChannel.setText(pipFocus ? "Pip Channel" : "Main Channel");
+                            }
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }));
+    }
+
+    /**
+     * TODO: comment me
+     * @param view
+     */
+    public void pipSwitch(View view){
+        if(standby || !pip) return;
+        pipFocus = !pipFocus;
+        buttonChannel.setText(pipFocus ? "Pip Channel" : "Main Channel");
     }
 
     /**
@@ -109,22 +266,44 @@ public class MainActivity extends AppCompatActivity {
      * @param view
      */
     public void nextProg(View view){
-        if (this.programs == null)
-            Toast.makeText(this, "Keiner Sender!", Toast.LENGTH_SHORT).show();
-        else {
-            // Just a hack for now
-            // TODO: do it in a more beautiful way
-            currentProgId = (currentProgId + 1) % programs.size();
-            String nextProg = programs.get(currentProgId);
 
-            executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE + nextProg, new RespHandler() {
+        if (programs.isEmpty() || standby) return;
+
+        if (pip && pipFocus) {
+            currentPipProgId = (currentPipProgId + 1) % programs.size();
+            String nextProg = programs.get(currentPipProgId);
+
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_PIP_CHANNEL + nextProg,
+                    new RespHandler() {
                 @Override
                 public void run() {
                     try {
                         // Check status before notify the user that the action is successful
-                        if (this.getContent().get(RESP_STATUS).equals("ok"))
+                        if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                            updateDisplay();
+                            Log.d(TAG, "nextPipProg: ok");
+                        }
+                    }
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }));
+        }
+        else {
+            currentProgId = (currentProgId + 1) % programs.size();
+            String nextProg = programs.get(currentProgId);
+
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE + nextProg,
+                    new RespHandler() {
+                @Override
+                public void run() {
+                    try {
+                        // Check status before notify the user that the action is successful
+                        if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                            updateDisplay();
                             Log.d(TAG, "nextProg: ok");
-                            // TODO: Do something further?
+                        }
                     }
                     catch (Exception e) {
                         e.printStackTrace();
@@ -139,22 +318,97 @@ public class MainActivity extends AppCompatActivity {
      * @param view
      */
     public void previousProg(View view){
-        if (this.programs == null)
-            Toast.makeText(this, "Keiner Sender!", Toast.LENGTH_SHORT).show();
-        else {
-            // Just a hack for now
-            // TODO: do it in a more beautiful way
-            currentProgId = ((currentProgId - 1) < 0) ? programs.size() - 1 : currentProgId - 1;
-            String previousProg = programs.get(currentProgId);
 
-            executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE + previousProg, new RespHandler() {
+        if (programs.isEmpty() || standby) return;
+
+        if (pip && pipFocus) {
+            currentPipProgId = ((currentPipProgId - 1) < 0) ? programs.size() - 1 : currentPipProgId - 1;
+            String previousProg = programs.get(currentPipProgId);
+
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_PIP_CHANNEL + previousProg,
+                    new RespHandler() {
                 @Override
                 public void run() {
                     try {
                         // Check status before notify the user that the action is successful
-                        if (this.getContent().get(RESP_STATUS).equals("ok"))
+                        if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                            updateDisplay();
+                            Log.d(TAG, "previousPipProg: ok");
+                        }
+                    }
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }));
+        }
+        else {
+            currentProgId = ((currentProgId - 1) < 0) ? programs.size() - 1 : currentProgId - 1;
+            String previousProg = programs.get(currentProgId);
+
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE +
+                    previousProg, new RespHandler() {
+                @Override
+                public void run() {
+                    try {
+                        // Check status before notify the user that the action is successful
+                        if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                            updateDisplay();
                             Log.d(TAG, "previousProg: ok");
-                             // TODO: Do something further?
+                        }
+                    }
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }));
+        }
+    }
+
+
+    /**
+     * Change to arbitrary program given its index
+     * @param progId
+     */
+    public static void changeProg(int progId) {
+
+        if (programs.isEmpty() || standby) return;
+
+        if (pip && pipFocus) {
+            currentPipProgId = progId;
+            String prog = programs.get(progId);
+
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_PIP_CHANNEL + prog,
+                    new RespHandler() {
+                        @Override
+                        public void run() {
+                            try {
+                                // Check status before notify the user that the action is successful
+                                if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                                    updateDisplay();
+                                    Log.d(TAG, "previousPipProg: ok");
+                                }
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }));
+        }
+        else {
+            currentProgId = progId;
+            String prog = programs.get(progId);
+
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_CHANNEL_CHANGE +
+                    prog, new RespHandler() {
+                @Override
+                public void run() {
+                    try {
+                        // Check status before notify the user that the action is successful
+                        if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                            updateDisplay();
+                            Log.d(TAG, "previousProg: ok");
+                        }
                     }
                     catch (Exception e) {
                         e.printStackTrace();
@@ -170,12 +424,11 @@ public class MainActivity extends AppCompatActivity {
      */
     public void volumeUp(View view)
     {
+        if (standby) return;
+        if (volume >= 100) return;
 
-        // TODO: Check for valid volume value before sinding HTTP request;)
-        /*
-        TODO: Store current volume in Shared Preference instead of using default value
-         */
-        executeTask(new SendHttpReqTask(PARAM_VOLUME + ++volume, new RespHandler() {
+        SendHttpReqTask.executeTask(
+                new SendHttpReqTask(PARAM_VOLUME + ++volume, new RespHandler() {
             @Override
             public void run() {
                 try {
@@ -197,8 +450,11 @@ public class MainActivity extends AppCompatActivity {
      */
     public void volumeDown(View view)
     {
-        // TODO: Check for valid volume value before sinding HTTP request ;)
-        executeTask(new SendHttpReqTask(PARAM_VOLUME + --volume, new RespHandler() {
+        if (standby) return;
+        if (volume <= 0) return;
+
+        SendHttpReqTask.executeTask(
+                new SendHttpReqTask(PARAM_VOLUME + --volume, new RespHandler() {
             @Override
             public void run() {
                 try {
@@ -220,26 +476,18 @@ public class MainActivity extends AppCompatActivity {
      */
     public void mute(View view)
     {
-
-        // Not good: (Running on main thread - GUIThread)
-
-        /*HttpRequest httpReq = new HttpRequest(TV_IP_ADDR, REQ_TIMEOUT);
-        JSONObject jsonOut = null;
-        try {
-            jsonOut = httpReq.sendHttp(PARAM_VOLUME + "0");
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }*/
-
+        if (standby) return;
         // TODO: Check for valid volume value before sinding HTTP request ;)
-        executeTask(new SendHttpReqTask(PARAM_VOLUME + "0", new RespHandler() {
+        SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_VOLUME +
+                (mute ? volume : "0"), new RespHandler() {
             @Override
             public void run() {
                 try {
                     // Check status before notify the user that the action is successful
-                    if (this.getContent().get(RESP_STATUS).equals("ok"))
+                    if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                        mute = !mute;
                         Log.d(TAG, "mute: ok");
+                    }
                     // TODO: Do something further?
                 }
                 catch (Exception e) {
@@ -247,37 +495,56 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }));
-
-        // TODO
-        //Toast.makeText(this, "Fernseher wurde stumm geschaltet", Toast.LENGTH_SHORT).show();
-
     }
 
     /**
      * TODO: comment me
      * @param view
      */
-    public void pause(View view)
+    public void standby(View view)
     {
-        ImageButton imagebutton = findViewById(R.id.pause);
-        imagebutton.setImageResource(R.drawable.play2);
-        // TODO
-    }
-
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        Log.d(TAG, "MainActivity paused!!!");
-
-
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        Log.d(TAG, "MainActivity resumed!!!");
-
+        if (standby) {
+            if (this.programs.isEmpty())
+                Toast.makeText(this, "Keiner Sender!", Toast.LENGTH_SHORT).show();
+            else {
+                imageButtonStandby.setImageResource(R.drawable.pause);
+                SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_STANDBY + "0&" +
+                        PARAM_CHANNEL_CHANGE + programs.get(currentProgId), new RespHandler() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                                standby = !standby;
+                                updateDisplay();
+                                Log.d(TAG, "standby = 0");
+                            }
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }));
+            }
+        }
+        else {
+            imageButtonStandby.setImageResource(R.drawable.play);
+            SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_STANDBY + "1",
+                    new RespHandler() {
+                @Override
+                public void run() {
+                    try {
+                        if (this.getContent().get(RESP_STATUS).equals("ok")) {
+                            standby = !standby;
+                            updateDisplay();
+                            Log.d(TAG, "standby = 1");
+                        }
+                    }
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }));
+        }
     }
 
     @Override
@@ -285,90 +552,120 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.d(TAG, "Main Activity created!");
+        displayTextView = findViewById(R.id.textview_display);
+        imageButtonStandby = findViewById(R.id.pause);
+        buttonChannel = findViewById(R.id.button_channel_main);
+        programs = new ArrayList<>();
+        programNames = new ArrayList<>();
+        favorites = new ArrayList<>();
 
-        View view = this.getWindow().getDecorView();
+        sharedPref = this.getSharedPreferences(SHARED_PREF_TAG, MODE_PRIVATE);
+        prefEditor = sharedPref.edit();
+        this.volume = sharedPref.getInt(PREF_KEY_VOLUME, DEFAULT_VOLUME);
+        this.currentProgId = sharedPref.getInt(PREF_KEY_CURRENT_PROG,0);
+        String progStr = sharedPref.getString(PREF_KEY_PROGRAM_JSON, null);
+        String favStr = sharedPref.getString(PREF_KEY_FAV_JSON, null);
 
-        // Initialize the program list
-        this.scanProgList(view);
+        Log.d(TAG, "onCreate: volume = " + volume );
+        Log.d(TAG, "onCreate: currentProgId = " + currentProgId );
 
-
-        // For Debug only
-        new SendHttpReqTask(PARAM_DEBUG_ON, new RespHandler() {
-            @Override
-            public void run() {
-                // Do nothing
-            }
-        }).execute();
-
-    }
-
-    /**
-     * Two running asynTasks will run serially in newer SDK versions.
-     * This method helps avoiding this issue.
-     * @param task
-     */
-    @SuppressLint("NewApi")
-    static <P, T extends AsyncTask<P, ?, ?>> void executeTask(T task, P... params) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, params);
-        } else {
-            task.execute(params);
-        }
-    }
-
-
-    /**
-     * Async task for sending HTTP request to the TV and handling the response
-     */
-    private class SendHttpReqTask extends AsyncTask<Void, Void, JSONObject> {
-
-        String param;
-        RespHandler respHandler;
-
-        public SendHttpReqTask(String param, RespHandler respHandler) {
-            this.param = param;
-            this.respHandler = respHandler;
-        }
-
-        @Override
-        protected JSONObject doInBackground(Void... voids) {
-            Log.d(TAG, "doInBackground: Going to send Request. PARAMS: " + this.param);
-            HttpRequest httpReq = new HttpRequest(TV_IP_ADDR, REQ_TIMEOUT);
-            JSONObject jsonOut = null;
+        if (progStr != null) {
             try {
-                jsonOut = httpReq.sendHttp(this.param);
-            }
-            catch (Exception e) {
+                readProgramJson(new JSONObject(progStr));
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-            return jsonOut;
         }
 
-        @Override
-        protected void onPostExecute(JSONObject jsonOut) {
-            super.onPostExecute(jsonOut);
-
-            Log.d(TAG, "onPostExecute: Going to run Response Handler!");
-            this.respHandler.setContent(jsonOut);
-            respHandler.run();
-
+        if (favStr != null) {
+            try {
+                JSONArray favArray = new JSONArray(favStr);
+                for (int i=0; i < favArray.length(); i++)
+                    favorites.add((String) favArray.get(i));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+
+        currentProgId = currentProgId >= programs.size() ? 0 : currentProgId;
+
+        // Init Requests
+        SendHttpReqTask.executeTask(new SendHttpReqTask(PARAM_VOLUME + volume +
+                (programs.isEmpty() ? "&" + PARAM_CHANNEL_SCAN : "") , new RespHandler() {
+            @Override
+            public void run() {
+                if (programs.isEmpty())
+                    readProgramJson(this.getContent());
+            }
+        }));
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        // Store stuffs
+        prefEditor.putInt(PREF_KEY_VOLUME, volume);
+        prefEditor.putInt(PREF_KEY_CURRENT_PROG, currentProgId);
+        JSONArray favArray = new JSONArray();
+        for (String fav: favorites)
+            favArray.put(fav);
+        prefEditor.putString(PREF_KEY_FAV_JSON, favArray.toString());
+        prefEditor.commit();
+        Log.d(TAG, "onStop: Pref Saved.");
     }
 
     /**
-     *  Every function should implement this handler and pass to the async task as argument.
-     *  This handler do the tasks upon receiving the HTTP response.
+     * Update the display screen of the remote control
      */
-    private abstract class RespHandler implements Runnable {
-        private JSONObject content = null;
-
-        public void setContent(JSONObject content) {
-            this.content = content;
+    private static void updateDisplay() {
+        if (standby) {
+            displayTextView.setText("Stand By");
+            return;
         }
+        String msg = programs.isEmpty() ? "Kein Sender!" : programNames.get(currentProgId) +
+                (favorites.contains(programs.get(currentProgId)) ? " (fav)" : "");
 
-        public JSONObject getContent() {
-            return this.content;
+        // Pip Mode
+        if (!programs.isEmpty() && pip)
+            msg = msg + "   |   " + programNames.get(currentPipProgId) +
+                    (favorites.contains(programs.get(currentPipProgId)) ? " (fav)" : "");
+
+        displayTextView.setText(msg);
+    }
+
+    /**
+     *
+     * @param jsonObject
+     */
+    private void readProgramJson(JSONObject jsonObject){
+        try {
+            programs.clear();
+            JSONArray channels = jsonObject.getJSONArray(RESP_CHANNELS);
+            // Fetch the channel code
+            for (int i = 0; i < channels.length(); i++) {
+                JSONObject channel = channels.getJSONObject(i);
+                programs.add((String) channel.get(RESP_CHANNEL));
+            }
+
+            programNames.clear();
+            // Fetch the program name
+            for (int i = 0; i < channels.length(); i++) {
+                JSONObject channel = channels.getJSONObject(i);
+                programNames.add((String) channel.get(RESP_PROGRAM));
+            }
+
+            Log.d(TAG, "programs size: " + programs.size());
+
+            // Persistently store
+            prefEditor.putString(PREF_KEY_PROGRAM_JSON, jsonObject.toString());
+            prefEditor.commit();
+
+            Toast.makeText(getBaseContext(),
+                    "Senderliste wird aktualisiert", Toast.LENGTH_SHORT).show();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
